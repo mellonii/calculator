@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <iostream>
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -23,6 +25,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     //Set window fix width and height
     this->setFixedSize(QSize(306, 319));
+
+    stored_base = 2;
+    ui->label->setText(QString::number(stored_base));
+    storedNumber = "";
 }
 
 MainWindow::~MainWindow()
@@ -48,12 +54,14 @@ void MainWindow::numberGroup_clicked(QAbstractButton* button)
     }
 
     //Append the digit only if we are not exceeding the digit limit
-    if (displayLabel.length() >= DIGIT_LIMIT) {
+    if (displayLabel.size() >= DIGIT_LIMIT) {
         return;
     }
 
     //Append requested digit
-    displayLabel.append(button->text());
+    QString tmp_buttonName = button->text();
+    displayLabel = displayLabel + tmp_buttonName;
+    //displayLabel.append(button->text());
 
     //Set number back to display
     ui->displayPanel->setText(displayLabel);
@@ -80,8 +88,8 @@ void MainWindow::actionGroup_clicked(QAbstractButton* button)
             //Set the flag to indicate that we now have a number stored in memory
             hasStoredNumber = true;
             //Get string from display
-            QString storedNumber = ui->displayPanel->text();
-            storedNum = comboBox->currentIndex() + 2;
+            storedNumber = ui->displayPanel->text();
+            stored_base = ui->label->toPlainText().toInt();
         }
         //Set the flag that the last button that was clicked was an operator
         operatorClicked = true;
@@ -160,25 +168,6 @@ void MainWindow::on_actionClear_clicked()
     hasStoredNumber = false;
 }
 
-void MainWindow::on_actionPercent_clicked()
-{
-    QString displayLabel = ui->displayPanel->text();
-    std::string str_displayLabel = displayLabel.toStdString();
-    std::string str_storedNumber = storedNumber.toStdString();
-
-    //If the displayed number ends with a comma, drop the comma.
-     if (displayLabel.endsWith('.',Qt::CaseSensitive)) {
-         displayLabel.QString::chop(1);
-     }
-
-    int displayNum = comboBox->currentIndex() + 2;
-
-    storedNumber = QString::number(power(str_storedNumber, storedNum, str_displayLabel, displayNum),'g', DIGIT_LIMIT);
-
-    //Set number back to display
-    ui->displayPanel->setText(storedNumber);
-}
-
 //==================================================================================
 //Helper functions
 //==================================================================================
@@ -193,26 +182,30 @@ void MainWindow::calculate_result() {
          displayLabel.QString::chop(1);
      }
 
-     int displayNum = comboBox->currentIndex() + 2;
+     int displayNum = ui->label->toPlainText().toInt();
 
      //Decide what to do according to operation
+
+
      if (storedOperator == '+') {
-         storedNumber = QString::number(add(str_displayLabel, displayNum, str_storedNumber, storedNum),'g', DIGIT_LIMIT);
+         storedNumber = QString::number(add(str_storedNumber, stored_base , str_displayLabel, displayNum),'g', DIGIT_LIMIT);
      }
      else if (storedOperator == '-') {
-         storedNumber = QString::number(minus(str_storedNumber, storedNum, str_displayLabel, displayNum),'g', DIGIT_LIMIT);
+         storedNumber = QString::number(minus(str_storedNumber, stored_base , str_displayLabel, displayNum),'g', DIGIT_LIMIT);
      }
      else if (storedOperator == 'x') {
-         storedNumber = QString::number(mult(str_displayLabel, displayNum, str_storedNumber, storedNum),'g', DIGIT_LIMIT);
+         storedNumber = QString::number(mult(str_storedNumber, stored_base , str_displayLabel, displayNum),'g', DIGIT_LIMIT);
      }
      else if (storedOperator == '/') {
-         storedNumber = QString::number(del(str_storedNumber, storedNum, str_displayLabel, displayNum),'g', DIGIT_LIMIT);
+         storedNumber = QString::number(del(str_storedNumber, stored_base , str_displayLabel, displayNum),'g', DIGIT_LIMIT);
+     }
+     else if (storedOperator == '^') {
+         storedNumber = QString::number(power(str_storedNumber, stored_base , str_displayLabel, displayNum),'g', DIGIT_LIMIT);
      }
 
      //Set number back to display
      ui->displayPanel->setText(storedNumber);
-     ui->comboBox->setCurrentIndex(8);
-     ui->comboBox->update();
+     ui->label->setText("10");
 }
 
 //Keyboard buttons should call the corresponding functions
@@ -278,66 +271,27 @@ void MainWindow::keyPressEvent(QKeyEvent *e) {
         case Qt::Key_Delete:
             on_actionClear_clicked();
             break;
-        //Percentage
-        case Qt::Key_Percent:
-            on_actionPercent_clicked();
-            break;
-    case Qt::Key_A:
-        numberGroup_clicked(ui->numA);
-        break;
-    case Qt::Key_B:
-        numberGroup_clicked(ui->numB);
-        break;
-    case Qt::Key_C:
-        numberGroup_clicked(ui->numC);
-        break;
-    case Qt::Key_D:
-        numberGroup_clicked(ui->numD);
-        break;
-    case Qt::Key_E:
-        numberGroup_clicked(ui->numE);
-        break;
-    case Qt::Key_F:
-        numberGroup_clicked(ui->numF);
-        break;
     default:
         break;
     }
 }
 
 //Саши
-double MainWindow::power(std::string a, int base_a, std::string b, int base_b) {
-    double at = transf(a, base_a);
-    double bt = transf(b, base_b);
-
-    if (abs(at) < 0.00000001 && abs(bt) < 0.00000001)
-        error();
-
-    return std::pow(at,bt);
-}
-double MainWindow::del(std::string a, int base_a, std::string b, int base_b) {
-    double at = transf(a, base_a);
-    double bt = transf(b, base_b);
-
-    if (abs(bt) < 0.000000001)
-        error();
-
-    return at / bt;
-}
-double MainWindow::mult(std::string a, int base_a, std::string b, int base_b) {
-    double at = transf(a, base_a);
-    double bt = transf(b, base_b);
-    return at * bt;
-}
-void MainWindow::error() {
-    std::cout << "ERROR ";
-}
 
 double MainWindow::transf(std::string x, int base) {
 
-    auto sep_flag = x.find(sep);
+    bool flag_minus = false;
+
+    if(x.size()>0 && x[0]=='-'){
+        flag_minus = true;
+        x=x.substr(1,x.size()-1);
+    }
+
+    long long sep_flag = x.find(sep);
     std::string xm = x.substr(0, sep_flag);
-    std::string xs = x.substr(sep_flag+1,x.size()-sep_flag+1);
+    std::string xs;
+    if(sep_flag!=-1)
+        xs = x.substr(sep_flag+1,x.size()-sep_flag+1);
     std::reverse(xm.begin(), xm.end());
 
     double ans = 0;
@@ -355,16 +309,89 @@ double MainWindow::transf(std::string x, int base) {
         ans += (pa[xs[i]]) * base_minor_power;
         base_minor_power /= base;
     }
+
+    if(flag_minus)
+        ans*=-1;
+
     return ans;
 }
 
 double MainWindow::add(std::string a, int base_a, std::string b, int base_b) {
     double at = transf(a, base_a);
     double bt = transf(b, base_b);
-    return at+bt;
+    return round((at+bt)*1000.0)/1000.0;
 }
 double MainWindow::minus(std::string a, int base_a, std::string b, int base_b) {
     double at = transf(a, base_a);
     double bt = transf(b, base_b);
-    return at - bt;
+    return round((at - bt)*1000.0)/1000.0;
 }
+
+double MainWindow::power(std::string a, int base_a, std::string b, int base_b) {
+    double at = transf(a, base_a);
+    double bt = transf(b, base_b);
+
+    if (abs(at) < 0.00000001 && abs(bt) < 0.00000001)
+        error();
+
+    return round((std::pow(at,bt))*1000.0)/1000.0;
+}
+double MainWindow::del(std::string a, int base_a, std::string b, int base_b) {
+    double at = transf(a, base_a);
+    double bt = transf(b, base_b);
+
+    if (abs(bt) < 0.000000001)
+        error();
+
+    return round((at / bt)*1000.0)/1000.0;
+}
+double MainWindow::mult(std::string a, int base_a, std::string b, int base_b) {
+    double at = transf(a, base_a);
+    double bt = transf(b, base_b);
+    return round((at * bt)*1000.0)/1000.0;
+}
+void MainWindow::error() {
+    std::cout << "ERROR ";
+}
+
+void MainWindow::on_numA_clicked()
+{
+   numberGroup_clicked(ui->numA);
+}
+
+
+void MainWindow::on_numB_clicked()
+{
+    numberGroup_clicked(ui->numB);
+}
+
+
+void MainWindow::on_numC_clicked()
+{
+    numberGroup_clicked(ui->numC);
+}
+
+
+void MainWindow::on_numD_clicked()
+{
+    numberGroup_clicked(ui->numD);
+}
+
+
+void MainWindow::on_numE_clicked()
+{
+    numberGroup_clicked(ui->numE);
+}
+
+
+void MainWindow::on_numF_clicked()
+{
+    numberGroup_clicked(ui->numF);
+}
+
+
+void MainWindow::on_actionPercent_clicked()
+{
+    actionGroup_clicked(ui->actionPercent);
+}
+

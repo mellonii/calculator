@@ -36,7 +36,6 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    QComboBox *comboBox;
 
     std::map<char, int> pa = {
         {'0',0},
@@ -75,6 +74,19 @@ private slots:
     void on_actionCalc_clicked();
     void on_comma_clicked();
     void on_actionClear_clicked();
+
+    void on_numA_clicked();
+
+    void on_numB_clicked();
+
+    void on_numC_clicked();
+
+    void on_numD_clicked();
+
+    void on_numE_clicked();
+
+    void on_numF_clicked();
+
     void on_actionPercent_clicked();
 
 private:
@@ -89,7 +101,7 @@ private:
     bool hasStoredNumber;
     //Stored number
     QString storedNumber;
-    int storedNum;
+    int stored_base;
     //Calculate result based on stored number and displayed number
     void calculate_result();
 
